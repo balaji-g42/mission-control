@@ -27,12 +27,8 @@ export function getDb(): Database.Database {
       console.log('[DB] New database created at:', DB_PATH);
     }
 
-    // Start the reconciler loop after module initialization completes.
-    // Dynamic import breaks the circular dependency: db/index → reconciler → @/lib/db
-    setImmediate(async () => {
-      const { startReconciler } = await import('@/lib/reconciler');
-      startReconciler();
-    });
+    // Reconciler is started from the SSE stream route (events/stream/route.ts)
+    // to avoid circular dependency: db/index → reconciler → @/lib/db
   }
   return db;
 }

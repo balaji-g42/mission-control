@@ -5,8 +5,12 @@
 
 import { NextRequest } from 'next/server';
 import { registerClient, unregisterClient } from '@/lib/events';
+import { startReconciler } from '@/lib/reconciler';
 
 export const dynamic = 'force-dynamic';
+
+// Start reconciler on first SSE connection (singleton — safe to call multiple times)
+startReconciler();
 
 export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
