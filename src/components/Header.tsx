@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, Settings, ChevronLeft, LayoutGrid, Rocket } from 'lucide-react';
+import { Zap, Settings, ChevronLeft, LayoutGrid, Rocket, Terminal } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { format } from 'date-fns';
 import type { Workspace } from '@/lib/types';
+
+// Check if terminal feature is enabled
+const isTerminalEnabled = process.env.NEXT_PUBLIC_TERMINAL_ENABLED === 'true';
 
 interface HeaderProps {
   workspace?: Workspace;
@@ -71,6 +74,11 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
             <Link href="/autopilot" className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary" title="Autopilot">
               <Rocket className="w-5 h-5" />
             </Link>
+            {isTerminalEnabled && (
+              <Link href="/terminal" className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary" title="OpenClaw Terminal">
+                <Terminal className="w-5 h-5" />
+              </Link>
+            )}
             <button onClick={() => router.push('/settings')} className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary shrink-0" title="Settings">
               <Settings className="w-5 h-5" />
             </button>
@@ -156,6 +164,11 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
             <Link href="/autopilot" className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary" title="Autopilot">
               <Rocket className="w-5 h-5" />
             </Link>
+            {isTerminalEnabled && (
+              <Link href="/terminal" className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary" title="OpenClaw Terminal">
+                <Terminal className="w-5 h-5" />
+              </Link>
+            )}
             <button onClick={() => router.push('/settings')} className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary" title="Settings">
               <Settings className="w-5 h-5" />
             </button>
