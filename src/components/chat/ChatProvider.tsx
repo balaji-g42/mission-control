@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { ChatWidget } from './ChatWidget';
 import { CommandPalette, buildDefaultCommands, type PaletteCommand } from './CommandPalette';
 
@@ -12,9 +13,37 @@ import { CommandPalette, buildDefaultCommands, type PaletteCommand } from './Com
  * 4. Slash-command bridge from chat input → palette
  */
 export function ChatProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteFilter, setPaletteFilter] = useState('');
   const [activeTaskId, setActiveTaskId] = useState<string | undefined>(undefined);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // Check if current page is public (no auth required)
+  const isPublicPage = pathname === '/login' || pathname === '/setup' || pathname === '/forgot-password';
+
+  // Check authentication
+  useEffect(() => {
+    if (isPublicPage) {
+      setIsAuthenticated(false);
+      return;
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/status');
+        if (res.ok) {
+          const data = await res.json();
+          setIsAuthenticated(data.usersExist && data.authenticated);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch {
+        setIsAuthenticated(false);
+      }
+    }
+    checkAuth();
+  }, [isPublicPage]);
 
   // Cmd+K to open command palette
   useEffect(() => {
@@ -51,7 +80,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <ChatWidget />
+      {isAuthenticated && !isPublicPage && <ChatWidget />}
       <CommandPalette
         isOpen={paletteOpen}
         onClose={() => setPaletteOpen(false)}

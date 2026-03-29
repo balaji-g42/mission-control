@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Settings, Save, RotateCcw, Home, FolderOpen, Link as LinkIcon,
   HardDrive, Download, Upload, Trash2, RotateCw, ChevronDown, ChevronRight,
@@ -262,6 +263,26 @@ export default function SettingsPage() {
               {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="border-b border-mc-border bg-mc-bg-secondary">
+        <div className="max-w-4xl mx-auto px-6 py-3">
+          <nav className="flex items-center gap-6">
+            <Link
+              href="/settings"
+              className="text-mc-accent font-medium border-b-2 border-mc-accent pb-1"
+            >
+              General
+            </Link>
+            <Link
+              href="/settings/security"
+              className="text-mc-text-secondary hover:text-mc-text pb-1 border-b-2 border-transparent hover:border-mc-text-secondary transition-colors"
+            >
+              Security
+            </Link>
+          </nav>
         </div>
       </div>
 
