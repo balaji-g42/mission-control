@@ -53,7 +53,7 @@ export default function WorkspacePage() {
           const authData = await authRes.json();
           const user = authData.user;
           
-          // Check if user must change password
+          // Check if user must change password (legacy check - should not happen with new setup)
           if (user.mustChangePassword) {
             window.location.href = '/settings/security?forcePasswordChange=true';
             return;

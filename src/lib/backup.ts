@@ -320,12 +320,19 @@ async function getS3Client() {
 }
 
 export async function uploadToS3(filepath: string, key: string): Promise<void> {
+  // Check if S3 is configured before attempting upload
+  if (!isS3Configured()) {
+    console.log('[Backup] S3 not configured, skipping upload');
+    return;
+  }
+
   const { PutObjectCommand } = await import('@aws-sdk/client-s3');
   const client = await getS3Client();
   const config = getS3Config();
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const fileBuffer = fs.readFileSync(filepath);
+  // Read file contents using promises API to avoid lint issues
+  const { readFile } = await import('fs/promises');
+  const fileBuffer = await readFile(filepath);
 
   await client.send(new PutObjectCommand({
     Bucket: config.bucket!,
@@ -338,6 +345,12 @@ export async function uploadToS3(filepath: string, key: string): Promise<void> {
 }
 
 async function deleteFromS3(key: string): Promise<void> {
+  // Check if S3 is configured before attempting delete
+  if (!isS3Configured()) {
+    console.log('[Backup] S3 not configured, skipping delete');
+    return;
+  }
+
   const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
   const client = await getS3Client();
   const config = getS3Config();

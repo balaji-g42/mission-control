@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Terminal, Lock, Mail, AlertTriangle, CheckCircle, Copy, CheckCheck } from 'lucide-react';
+import { Terminal, Lock, Mail, AlertTriangle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function SetupPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState('');
-  const [copied, setCopied] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
 
   // Check if setup is needed
@@ -37,13 +38,24 @@ export default function SetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await fetch('/api/auth/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -54,12 +66,11 @@ export default function SetupPage() {
       }
 
       setSuccess(true);
-      setGeneratedPassword(data.password);
       
-      // Redirect to password change page after 5 seconds
+      // Redirect to 2FA setup after 2 seconds
       setTimeout(() => {
-        router.push('/settings/security?forcePasswordChange=true');
-      }, 5000);
+        router.push('/settings/security');
+      }, 2000);
     } catch (err) {
       setError('Setup failed. Please try again.');
     } finally {
@@ -68,13 +79,7 @@ export default function SetupPage() {
   };
 
   const copyPassword = async () => {
-    try {
-      await navigator.clipboard.writeText(generatedPassword);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
+    // Not needed anymore since password is user-provided
   };
 
   if (checkingStatus) {
@@ -105,8 +110,8 @@ export default function SetupPage() {
               <div className="flex items-start gap-3 p-3 bg-mc-accent/10 border border-mc-accent/30 rounded-lg mb-6">
                 <AlertTriangle className="w-5 h-5 text-mc-accent flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-mc-text-secondary">
-                  <p className="font-medium text-mc-accent mb-1">No admin account found</p>
-                  <p>Create your admin account to get started. A random password will be generated for you.</p>
+                  <p className="font-medium text-mc-accent mb-1">Create Admin Account</p>
+                  <p>Enter your email and choose a secure password. Two-factor authentication will be required.</p>
                 </div>
               </div>
 
@@ -130,6 +135,54 @@ export default function SetupPage() {
                   </div>
                 </div>
 
+                <div className="mb-4">
+                  <label htmlFor="password" className="block text-sm font-medium text-mc-text-secondary mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mc-text-secondary" />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter a secure password"
+                      required
+                      minLength={8}
+                      className="w-full pl-10 pr-12 py-2.5 bg-mc-bg border border-mc-border rounded-lg text-mc-text placeholder-mc-text-secondary/50 focus:outline-none focus:border-mc-accent transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-mc-text-secondary hover:text-mc-text transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-mc-text-secondary mb-2">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mc-text-secondary" />
+                    <input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm your password"
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 bg-mc-bg border border-mc-border rounded-lg text-mc-text placeholder-mc-text-secondary/50 focus:outline-none focus:border-mc-accent transition-colors"
+                    />
+                  </div>
+                </div>
+
                 {error && (
                   <div className="mb-4 p-3 bg-mc-accent-red/10 border border-mc-accent-red/30 rounded-lg">
                     <p className="text-sm text-mc-accent-red">{error}</p>
@@ -138,7 +191,7 @@ export default function SetupPage() {
 
                 <button
                   type="submit"
-                  disabled={loading || !email}
+                  disabled={loading || !email || !password || !confirmPassword}
                   className="w-full py-2.5 bg-mc-accent text-white font-medium rounded-lg hover:bg-mc-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loading ? 'Creating Account...' : 'Create Admin Account'}
@@ -152,39 +205,16 @@ export default function SetupPage() {
                 <CheckCircle className="w-5 h-5 text-mc-accent-green flex-shrink-0" />
                 <div className="text-sm">
                   <p className="font-medium text-mc-accent-green">Account created successfully!</p>
-                  <p className="text-mc-text-secondary mt-1">Save your password now. You must change it after login.</p>
+                  <p className="text-mc-text-secondary mt-1">You will be redirected to the dashboard shortly.</p>
                 </div>
               </div>
 
-              {/* Password Display */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-mc-text-secondary mb-2">
-                  Generated Password
-                </label>
-                <div className="flex gap-2">
-                  <div className="flex-1 p-3 bg-mc-bg border border-mc-border rounded-lg font-mono text-sm text-mc-accent break-all">
-                    {generatedPassword}
-                  </div>
-                  <button
-                    onClick={copyPassword}
-                    className="px-3 py-2 bg-mc-bg-tertiary border border-mc-border rounded-lg hover:bg-mc-border/50 transition-colors"
-                    title="Copy password"
-                  >
-                    {copied ? (
-                      <CheckCheck className="w-4 h-4 text-mc-accent-green" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-mc-text-secondary" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Warning */}
-              <div className="flex items-start gap-3 p-3 bg-mc-accent-yellow/10 border border-mc-accent-yellow/30 rounded-lg">
-                <Lock className="w-5 h-5 text-mc-accent-yellow flex-shrink-0 mt-0.5" />
+              {/* Info */}
+              <div className="flex items-start gap-3 p-3 bg-mc-accent-blue/10 border border-mc-accent-blue/30 rounded-lg">
+                <Lock className="w-5 h-5 text-mc-accent-blue flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-mc-text-secondary">
-                  <p className="font-medium text-mc-accent-yellow mb-1">Important</p>
-                  <p>This password will not be shown again. You will be redirected to the dashboard shortly.</p>
+                  <p className="font-medium text-mc-accent-blue mb-1">Next Steps</p>
+                  <p>Enable two-factor authentication in Settings → Security for enhanced security.</p>
                 </div>
               </div>
             </>

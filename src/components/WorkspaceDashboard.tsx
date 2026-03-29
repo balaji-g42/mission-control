@@ -13,6 +13,8 @@ export function WorkspaceDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const checkAuthAndLoad = useCallback(async () => {
     try {
@@ -27,7 +29,7 @@ export function WorkspaceDashboard() {
       const authData = await authRes.json();
       const user = authData.user;
       
-      // Check if user must change password
+      // Check if user must change password (legacy check, should not happen with new setup)
       if (user.mustChangePassword) {
         router.push('/settings/security?forcePasswordChange=true');
         return;
@@ -49,6 +51,35 @@ export function WorkspaceDashboard() {
       setLoading(false);
     }
   }, [router]);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Failed to load user:', error);
+      }
+    };
+
+    if (authenticated) {
+      loadUser();
+    }
+  }, [authenticated]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showUserMenu && !(event.target as Element).closest('.user-menu')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -93,11 +124,53 @@ export function WorkspaceDashboard() {
               </Link>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="min-h-11 flex items-center gap-2 px-4 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90"
+                className="min-h-11 flex items-center gap-2 px-4 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90 border border-mc-accent text-sm"
               >
                 <Plus className="w-4 h-4" />
                 New Workspace
               </button>
+              {user && (
+                <div className="relative user-menu">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="min-h-11 min-w-11 px-2 hover:bg-mc-bg-tertiary rounded-lg text-mc-text-secondary flex items-center justify-center border border-mc-border bg-mc-bg"
+                    title="User Menu"
+                  >
+                    <div className="w-6 h-6 bg-mc-accent rounded-full flex items-center justify-center text-xs font-bold text-mc-bg">
+                      {user.email.charAt(0).toUpperCase()}
+                    </div>
+                  </button>
+                  {showUserMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-mc-bg-secondary border border-mc-border rounded-lg shadow-lg z-50">
+                      <div className="px-3 py-2 border-b border-mc-border">
+                        <div className="text-sm font-medium text-mc-text">{user.email}</div>
+                        <div className="text-xs text-mc-text-secondary capitalize">{user.role}</div>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            router.push('/settings/security');
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary"
+                        >
+                          Security Settings
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setShowUserMenu(false);
+                            await fetch('/api/auth/logout', { method: 'POST' });
+                            router.push('/login');
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -139,12 +212,12 @@ export function WorkspaceDashboard() {
             {/* Add workspace card */}
             <button
               onClick={() => setShowCreateModal(true)}
-              className="border-2 border-dashed border-mc-border rounded-xl p-6 hover:border-mc-accent/50 transition-colors flex flex-col items-center justify-center gap-3 min-h-[200px] min-w-0"
+              className="border-2 border-dashed border-mc-border rounded-xl p-4 sm:p-6 hover:border-mc-accent/50 transition-colors flex flex-col items-center justify-center gap-3 min-h-[172px] min-w-0"
             >
-              <div className="w-12 h-12 rounded-full bg-mc-bg-tertiary flex items-center justify-center">
-                <Plus className="w-6 h-6 text-mc-text-secondary" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-mc-bg-tertiary flex items-center justify-center">
+                <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-mc-text-secondary" />
               </div>
-              <span className="text-mc-text-secondary font-medium">Add Workspace</span>
+              <span className="text-sm sm:text-base text-mc-text-secondary font-medium">Add Workspace</span>
             </button>
           </div>
         )}
