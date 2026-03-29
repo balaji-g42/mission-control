@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+// Force dynamic rendering - this route uses environment variables
+export const dynamic = 'force-dynamic';
+
 /**
  * Terminal Configuration API
  * Returns runtime configuration for terminal access
