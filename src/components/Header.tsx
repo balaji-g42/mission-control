@@ -9,9 +9,6 @@ import { format } from 'date-fns';
 import TwoFactorWarning from '@/components/auth/TwoFactorWarning';
 import type { Workspace } from '@/lib/types';
 
-// Check if ttyd terminal is configured
-const isTerminalEnabled = !!process.env.NEXT_PUBLIC_TTYD_PORT;
-
 interface HeaderProps {
   workspace?: Workspace;
   isPortrait?: boolean;
@@ -24,6 +21,7 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
   const [activeSubAgents, setActiveSubAgents] = useState(0);
   const [user, setUser] = useState<{ email: string; role: string } | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isTerminalEnabled, setIsTerminalEnabled] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -74,6 +72,24 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showUserMenu]);
+
+  // Load terminal configuration at runtime
+  useEffect(() => {
+    const loadTerminalConfig = async () => {
+      try {
+        const res = await fetch('/api/config/terminal');
+        if (res.ok) {
+          const config = await res.json();
+          setIsTerminalEnabled(config.enabled);
+        }
+      } catch (error) {
+        console.error('Failed to load terminal config:', error);
+        setIsTerminalEnabled(false);
+      }
+    };
+
+    loadTerminalConfig();
+  }, []);
 
   const workingAgents = agents.filter((a) => a.status === 'working').length;
   const activeAgents = workingAgents + activeSubAgents;
