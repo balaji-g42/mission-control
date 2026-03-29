@@ -1,21 +1,41 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle, Activity, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import type { WorkspaceStats } from '@/lib/types';
+import TwoFactorWarning from '@/components/auth/TwoFactorWarning';
 
 export function WorkspaceDashboard() {
+  const router = useRouter();
   const [workspaces, setWorkspaces] = useState<WorkspaceStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
 
-  useEffect(() => {
-    loadWorkspaces();
-  }, []);
-
-  const loadWorkspaces = async () => {
+  const checkAuthAndLoad = useCallback(async () => {
     try {
+      // Check if user is authenticated
+      const authRes = await fetch('/api/auth/me');
+      if (!authRes.ok) {
+        // Not authenticated, redirect to login
+        router.push('/login');
+        return;
+      }
+      
+      const authData = await authRes.json();
+      const user = authData.user;
+      
+      // Check if user must change password
+      if (user.mustChangePassword) {
+        router.push('/settings/security?forcePasswordChange=true');
+        return;
+      }
+      
+      setAuthenticated(true);
+      
+      // Load workspaces only after authentication is confirmed
       const res = await fetch('/api/workspaces?stats=true');
       if (res.ok) {
         const data = await res.json();
@@ -23,10 +43,16 @@ export function WorkspaceDashboard() {
       }
     } catch (error) {
       console.error('Failed to load workspaces:', error);
+      // On error, redirect to login
+      router.push('/login');
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkAuthAndLoad();
+  }, [checkAuthAndLoad]);
 
   if (loading) {
     return (
@@ -41,6 +67,7 @@ export function WorkspaceDashboard() {
 
   return (
     <div className="min-h-screen bg-mc-bg">
+      <TwoFactorWarning />
       {/* Header */}
       <header className="border-b border-mc-border bg-mc-bg-secondary">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -129,7 +156,7 @@ export function WorkspaceDashboard() {
           onClose={() => setShowCreateModal(false)}
           onCreated={() => {
             setShowCreateModal(false);
-            loadWorkspaces();
+            checkAuthAndLoad();
           }}
         />
       )}

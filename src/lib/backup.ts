@@ -324,6 +324,7 @@ export async function uploadToS3(filepath: string, key: string): Promise<void> {
   const client = await getS3Client();
   const config = getS3Config();
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const fileBuffer = fs.readFileSync(filepath);
 
   await client.send(new PutObjectCommand({

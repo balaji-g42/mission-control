@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Zap, Settings, ChevronLeft, LayoutGrid, Rocket, Terminal } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { format } from 'date-fns';
+import TwoFactorWarning from '@/components/auth/TwoFactorWarning';
 import type { Workspace } from '@/lib/types';
 
 // Check if terminal feature is enabled
@@ -21,6 +22,8 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
   const { agents, tasks, isOnline } = useMissionControl();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeSubAgents, setActiveSubAgents] = useState(0);
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -45,6 +48,33 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Failed to load user:', error);
+      }
+    };
+
+    loadUser();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showUserMenu && !(event.target as Element).closest('.user-menu')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
+
   const workingAgents = agents.filter((a) => a.status === 'working').length;
   const activeAgents = workingAgents + activeSubAgents;
   const tasksInQueue = tasks.filter((t) => t.status !== 'done' && t.status !== 'review').length;
@@ -52,11 +82,13 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
   const portraitWorkspaceHeader = !!workspace && isPortrait;
 
   return (
-    <header
-      className={`bg-mc-bg-secondary border-b border-mc-border px-3 md:px-4 ${
-        portraitWorkspaceHeader ? 'py-2.5 space-y-2.5' : 'h-14 flex items-center justify-between gap-2'
-      }`}
-    >
+    <>
+      <TwoFactorWarning />
+      <header
+        className={`bg-mc-bg-secondary border-b border-mc-border px-3 md:px-4 ${
+          portraitWorkspaceHeader ? 'py-2.5 space-y-2.5' : 'h-14 flex items-center justify-between gap-2'
+        }`}
+      >
       {portraitWorkspaceHeader ? (
         <>
           <div className="flex items-center justify-between gap-2 min-w-0">
@@ -82,6 +114,46 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
             <button onClick={() => router.push('/settings')} className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary shrink-0" title="Settings">
               <Settings className="w-5 h-5" />
             </button>
+              <div className="relative user-menu">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary shrink-0 flex items-center justify-center"
+                  title="User Menu"
+                >
+                  <div className="w-6 h-6 bg-mc-accent rounded-full flex items-center justify-center text-xs font-bold text-mc-bg">
+                    {user?.email.charAt(0).toUpperCase()}
+                  </div>
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-mc-bg-secondary border border-mc-border rounded-lg shadow-lg z-50">
+                    <div className="px-3 py-2 border-b border-mc-border">
+                      <div className="text-sm font-medium text-mc-text">{user?.email}</div>
+                      <div className="text-xs text-mc-text-secondary capitalize">{user?.role}</div>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          router.push('/settings/security');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary"
+                      >
+                        Security Settings
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setShowUserMenu(false);
+                          await fetch('/api/auth/logout', { method: 'POST' });
+                          router.push('/login');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
           </div>
 
           <div className="flex items-center gap-2 min-w-0">
@@ -172,9 +244,52 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
             <button onClick={() => router.push('/settings')} className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary" title="Settings">
               <Settings className="w-5 h-5" />
             </button>
+            {user && (
+              <div className="relative user-menu">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="min-h-11 min-w-11 p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary flex items-center justify-center"
+                  title="User Menu"
+                >
+                  <div className="w-6 h-6 bg-mc-accent rounded-full flex items-center justify-center text-xs font-bold text-mc-bg">
+                    {user?.email.charAt(0).toUpperCase()}
+                  </div>
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-mc-bg-secondary border border-mc-border rounded-lg shadow-lg z-50">
+                    <div className="px-3 py-2 border-b border-mc-border">
+                      <div className="text-sm font-medium text-mc-text">{user.email}</div>
+                      <div className="text-xs text-mc-text-secondary capitalize">{user.role}</div>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          router.push('/settings/security');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary"
+                      >
+                        Security Settings
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setShowUserMenu(false);
+                          await fetch('/api/auth/logout', { method: 'POST' });
+                          router.push('/login');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}
     </header>
+    </>
   );
 }

@@ -40,6 +40,9 @@ next-env.d.ts
 *.db-shm
 *.db-wal
 
+# secrets (NEVER commit credentials)
+.secrets/
+
 # claude code local files
 .claude/settings.local.json
 .claude/tsc-cache/
