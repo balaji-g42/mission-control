@@ -15,10 +15,10 @@
   ],
   "scripts": {
     "postinstall": "node -e \"if(!process.env.CI && !process.env.MC_SILENT_INSTALL) require('child_process').execSync('node bin/mission-control-setup.js', {stdio:'inherit'})\" || true",
-    "dev": "next dev --turbo -p 4000",
-    "dev:next": "next dev --turbo -p 4000",
+    "dev": "node bin/run-next.js dev --turbo",
+    "dev:next": "node bin/run-next.js dev --turbo",
     "build": "next build",
-    "start": "next start -p 4000",
+    "start": "node bin/run-next.js start",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:restart": "pm2 restart ecosystem.config.cjs",
     "pm2:stop": "pm2 stop mission-control",
