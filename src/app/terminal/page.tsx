@@ -1,16 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Terminal as TerminalIcon, ExternalLink } from 'lucide-react';
-
-// TTYD terminal server URL (runs alongside openclaw on localhost)
-const TTYD_PORT = process.env.NEXT_PUBLIC_TTYD_PORT || '3001';
-const TTYD_URL = `http://localhost:${TTYD_PORT}`;
 
 export default function TerminalPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [ttydUrl, setTtydUrl] = useState<string>('');
+
+  // Load terminal configuration at runtime
+  useEffect(() => {
+    const loadTerminalConfig = async () => {
+      try {
+        const res = await fetch('/api/config/terminal');
+        if (res.ok) {
+          const config = await res.json();
+          if (config.enabled && config.port) {
+            setTtydUrl(`http://localhost:${config.port}`);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load terminal config:', error);
+      }
+    };
+
+    loadTerminalConfig();
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-[#0d1117]">
@@ -30,15 +46,17 @@ export default function TerminalPage() {
             <span className="text-sm font-medium text-[#c9d1d9]">OpenClaw Terminal</span>
           </div>
         </div>
-        <a
-          href={TTYD_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 px-3 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] rounded transition-colors"
-        >
-          <ExternalLink className="w-3 h-3" />
-          Open in New Tab
-        </a>
+        {ttydUrl && (
+          <a
+            href={ttydUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] rounded transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Open in New Tab
+          </a>
+        )}
       </div>
 
       {/* TTYD Terminal iframe */}
@@ -51,13 +69,23 @@ export default function TerminalPage() {
             </div>
           </div>
         )}
-        <iframe
-          src={TTYD_URL}
-          className="w-full h-full border-0"
-          title="OpenClaw Terminal"
-          onLoad={() => setIsLoading(false)}
-          allow="clipboard-read; clipboard-write"
-        />
+        {ttydUrl ? (
+          <iframe
+            src={ttydUrl}
+            className="w-full h-full border-0"
+            title="OpenClaw Terminal"
+            onLoad={() => setIsLoading(false)}
+            allow="clipboard-read; clipboard-write"
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <TerminalIcon className="w-12 h-12 text-[#8b949e] mx-auto mb-3" />
+              <p className="text-[#8b949e]">Terminal not configured</p>
+              <p className="text-[#8b949e] text-sm mt-1">Set TTYD_PORT environment variable to enable terminal access</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
