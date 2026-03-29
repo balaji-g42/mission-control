@@ -140,10 +140,8 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
     console.log(`[Planning Poll] Triggering dispatch: ${dispatchUrl}`);
 
     try {
-      const dispatchHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.MC_API_TOKEN) {
-        dispatchHeaders['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
-      }
+      const { getAuthHeaders } = await import('@/lib/auth/api-token');
+      const dispatchHeaders = await getAuthHeaders();
 
       const dispatchRes = await fetch(dispatchUrl, {
         method: 'POST',

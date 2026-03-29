@@ -4,7 +4,7 @@
  */
 
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 // Number of salt rounds for bcrypt (12 is a good balance of security and performance)
 const SALT_ROUNDS = 12;

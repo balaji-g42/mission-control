@@ -9,8 +9,8 @@ import { format } from 'date-fns';
 import TwoFactorWarning from '@/components/auth/TwoFactorWarning';
 import type { Workspace } from '@/lib/types';
 
-// Check if terminal feature is enabled
-const isTerminalEnabled = process.env.NEXT_PUBLIC_TERMINAL_ENABLED === 'true';
+// Check if ttyd terminal is configured
+const isTerminalEnabled = !!process.env.NEXT_PUBLIC_TTYD_PORT;
 
 interface HeaderProps {
   workspace?: Workspace;

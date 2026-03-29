@@ -3,7 +3,7 @@
  * Used as backup when TOTP device is unavailable
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
 // Configuration

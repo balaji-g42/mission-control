@@ -355,12 +355,10 @@ function createTaskFromIdea(idea: Idea, opts?: { urgent?: boolean; notes?: strin
 /**
  * Queue an async dispatch — fire-and-forget internal fetch to the dispatch endpoint.
  */
-function queueDispatch(taskId: string): void {
+async function queueDispatch(taskId: string): Promise<void> {
   const url = getMissionControlUrl();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (process.env.MC_API_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
-  }
+  const { getAuthHeaders } = await import('@/lib/auth/api-token');
+  const headers = await getAuthHeaders();
   fetch(`${url}/api/tasks/${taskId}/dispatch`, { method: 'POST', headers, signal: AbortSignal.timeout(30_000) })
     .then(res => { if (!res.ok) console.error('[AutoDispatch] Failed:', res.status); })
     .catch(err => console.error('[AutoDispatch] Error:', err));

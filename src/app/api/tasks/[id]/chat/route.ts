@@ -87,10 +87,8 @@ export async function POST(
     if (!delivered && ['assigned', 'inbox', 'testing', 'review', 'verification'].includes(task.status)) {
       try {
         const missionControlUrl = getMissionControlUrl();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (process.env.MC_API_TOKEN) {
-          headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
-        }
+        const { getAuthHeaders } = await import('@/lib/auth/api-token');
+        const headers = await getAuthHeaders();
 
         const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${taskId}/dispatch`, {
           method: 'POST',

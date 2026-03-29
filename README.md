@@ -385,6 +385,48 @@ npm run build
 npx next start -p 4000
 ```
 
+### Production with PM2 (manual install)
+
+Install PM2 globally once on your server:
+
+```bash
+npm install -g pm2
+```
+
+Start with the cross-platform ecosystem config (`ecosystem.config.cjs`):
+
+```bash
+npm run build
+npm run pm2:start
+npm run pm2:save
+```
+
+Useful PM2 commands:
+
+```bash
+npm run pm2:restart
+npm run pm2:logs
+npm run pm2:stop
+```
+
+Optional next step: start on reboot
+
+Linux/macOS:
+
+```bash
+pm2 startup
+# Run the command PM2 prints (usually requires sudo)
+npm run pm2:save
+```
+
+Windows (PowerShell as Administrator):
+
+```bash
+npm install -g pm2-windows-startup
+pm2-startup install
+npm run pm2:save
+```
+
 ---
 
 ## 🐳 Docker
@@ -492,35 +534,17 @@ Subtasks run in parallel with dependency-aware scheduling. Health monitoring det
 |:---------|:--------:|:--------|:------------|
 | `OPENCLAW_GATEWAY_URL` | ✅ | `ws://127.0.0.1:18789` | WebSocket URL to OpenClaw Gateway |
 | `OPENCLAW_GATEWAY_TOKEN` | ✅ | — | Authentication token for OpenClaw |
-| `MC_API_TOKEN` | — | — | API auth token (enables auth middleware) |
-| `WEBHOOK_SECRET` | — | — | HMAC secret for webhook validation |
 | `DATABASE_PATH` | — | `./mission-control.db` | SQLite database location |
 | `WORKSPACE_BASE_PATH` | — | `~/Documents/Shared` | Base directory for workspace files |
 | `PROJECTS_PATH` | — | `~/Documents/Shared/projects` | Directory for project folders |
 
 ### Security (Production)
 
-Generate secure tokens:
+**API Authentication:** Mission Control uses session-based authentication. When a user logs in, a session token is created and stored in the database. This token is used for all API calls and automatically rotates on each login.
 
-```bash
-# API authentication token
-openssl rand -hex 32
-
-# Webhook signature secret
-openssl rand -hex 32
-```
-
-Add to `.env.local`:
-
-```env
-MC_API_TOKEN=your-64-char-hex-token
-WEBHOOK_SECRET=your-64-char-hex-token
-```
-
-When `MC_API_TOKEN` is set:
-- External API calls require `Authorization: Bearer <token>`
 - Browser UI works automatically (same-origin requests are allowed)
-- SSE streams accept token as query param
+- External API calls require a valid session token in the `Authorization: Bearer <token>` header
+- Session tokens expire after 24 hours and rotate on each login
 
 See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) for the full production guide.
 

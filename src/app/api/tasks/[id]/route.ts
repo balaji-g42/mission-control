@@ -305,10 +305,8 @@ export async function PATCH(
       if (!workflowResult.handedOff) {
         // No workflow template or no role for this stage — fall back to legacy dispatch
         const missionControlUrl = getMissionControlUrl();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (process.env.MC_API_TOKEN) {
-          headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
-        }
+        const { getAuthHeaders } = await import('@/lib/auth/api-token');
+        const headers = await getAuthHeaders();
 
         try {
           const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {
@@ -369,10 +367,8 @@ export async function PATCH(
       run('UPDATE tasks SET planning_dispatch_error = NULL, updated_at = ? WHERE id = ?', [now, id]);
 
       const missionControlUrl = getMissionControlUrl();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.MC_API_TOKEN) {
-        headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
-      }
+      const { getAuthHeaders } = await import('@/lib/auth/api-token');
+      const headers = await getAuthHeaders();
       try {
         const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {
           method: 'POST',

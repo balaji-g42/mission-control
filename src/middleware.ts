@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Log warning at startup if auth is disabled
-const MC_API_TOKEN = process.env.MC_API_TOKEN;
-if (!MC_API_TOKEN) {
-  console.warn('[SECURITY WARNING] MC_API_TOKEN not set - API authentication is DISABLED (local dev mode)');
-}
-
 /**
  * Check if a request originates from the same host (browser UI).
  * Same-origin browser requests include a Referer or Origin header
@@ -47,6 +41,22 @@ function isSameOriginRequest(request: NextRequest): boolean {
   return false;
 }
 
+/**
+ * Validate API token against user_sessions table.
+ * Session tokens are stored in the database and rotate on each login.
+ */
+async function isValidApiToken(token: string): Promise<boolean> {
+  try {
+    // Dynamic import to avoid issues with Next.js middleware
+    const { getSessionByToken } = await import('@/lib/auth/session');
+    const session = await getSessionByToken(token);
+    return !!session;
+  } catch (err) {
+    console.error('[Auth] Failed to validate API token:', err);
+    return false;
+  }
+}
+
 // Demo mode — read-only, blocks all mutations
 const DEMO_MODE = process.env.DEMO_MODE === 'true';
 if (DEMO_MODE) {
@@ -75,7 +85,7 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes without authentication
@@ -118,23 +128,9 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // If MC_API_TOKEN is not set, auth is disabled (dev mode)
-    if (!MC_API_TOKEN) {
-      return NextResponse.next();
-    }
-
     // Allow same-origin browser requests (UI fetching its own API)
     if (isSameOriginRequest(request)) {
       return NextResponse.next();
-    }
-
-    // Special case: /api/events/stream (SSE) - allow token as query param
-    if (pathname === '/api/events/stream') {
-      const queryToken = request.nextUrl.searchParams.get('token');
-      if (queryToken && queryToken === MC_API_TOKEN) {
-        return NextResponse.next();
-      }
-      // Fall through to header check below
     }
 
     // Check Authorization header for bearer token
@@ -149,7 +145,10 @@ export function middleware(request: NextRequest) {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
-    if (token !== MC_API_TOKEN) {
+    // Validate token against user_sessions table
+    // Session tokens rotate on each login and expire after 24 hours
+    const valid = await isValidApiToken(token);
+    if (!valid) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

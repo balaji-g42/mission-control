@@ -207,8 +207,8 @@ When dispatching, generate a short-lived token that authorizes operations **only
 import crypto from 'crypto';
 
 function generateDispatchToken(taskId: string): { token: string; expiresAt: string } {
-  // HMAC-based token: taskId + timestamp + random, signed with MC_API_TOKEN
-  const secret = process.env.MC_API_TOKEN || 'dev-fallback';
+  // HMAC-based token: taskId + timestamp + random, signed with session secret
+  const secret = process.env.SESSION_SECRET || 'dev-fallback';
   const payload = `${taskId}:${Date.now()}:${crypto.randomBytes(16).toString('hex')}`;
   const token = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   

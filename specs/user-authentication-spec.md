@@ -9,7 +9,7 @@ This document outlines the implementation plan for adding proper user authentica
 ## Current State
 
 - **Tech Stack:** Next.js 14 (App Router), SQLite (better-sqlite3), React 18, TypeScript, Tailwind CSS
-- **Current Auth:** Single `MC_API_TOKEN` environment variable with Bearer token validation
+- **Current Auth:** Session-based authentication with database-stored tokens
 - **No user management, sessions, or login pages**
 
 ---
@@ -20,31 +20,43 @@ This document outlines the implementation plan for adding proper user authentica
 |----------|--------|--------|
 | **User Roles** | `admin` only | Expand to RBAC later |
 | **Session Storage** | Server-side (SQLite) | More secure than JWT, revocable, no token exposure |
-| **Initial Password** | Random → Force change on first login | Security best practice |
+| **Initial Password** | User-provided during setup | User chooses their own secure password |
 | **2FA Method** | TOTP only | Google Authenticator, Authy compatible |
-| **2FA Requirement** | **MANDATORY** | Must complete 2FA setup before accessing the system |
+| **2FA Requirement** | **Recommended** | Encouraged after setup, not blocking |
 | **Password Reset** | **2FA Recovery Codes only** | No mail server available |
 
 ---
 
-## Updated Security Model
+## Current Implementation (As Built)
 
-### 2FA is Mandatory
-- Users MUST complete 2FA setup before accessing the dashboard
-- Until 2FA is setup, show a persistent warning banner
-- If 2FA is not enabled, redirect to 2FA setup page
+### Setup Flow
+1. User visits `/setup` page
+2. User enters email and chooses password (user-provided, not random)
+3. User confirms password
+4. Account created and user is automatically logged in
+5. Redirect to dashboard
+6. 2FA setup is recommended via info banner but not mandatory
 
-### Password Reset Flow (No Email)
-1. User requests password reset at `/forgot-password`
-2. System verifies 2FA code (TOTP or Recovery Code)
-3. If valid, allow password reset
-4. This is the ONLY way to reset password (no email available)
+### Login Flow
+1. User visits `/login` page
+2. User enters email and password
+3. System validates credentials
+4. Account lockout after 5 failed attempts (15-minute lockout)
+5. On success, session created and cookie set
+6. Redirect to dashboard
 
-### Recovery Codes
-- 10 single-use codes generated during 2FA setup
-- Each code can be used once to login if TOTP device is unavailable
-- Also used for password reset verification
-- Users should save these codes securely
+### 2FA (Optional)
+- 2FA setup is available in Settings → Security
+- User can enable 2FA at any time
+- TOTP with QR code for authenticator apps
+- 10 recovery codes generated during setup
+- 2FA is NOT required to access the dashboard
+- 2FA is recommended but not blocking
+
+### Password Reset (Requires 2FA)
+- Password reset requires valid 2FA code (TOTP or Recovery Code)
+- Without 2FA enabled, password reset is NOT possible
+- Alternative: Contact system administrator
 
 ---
 
@@ -179,18 +191,18 @@ src/
 
 ---
 
-## Security Specifications
+## Security Specifications (Current Implementation)
 
 ### Password Requirements
 - Minimum 12 characters
 - Must contain: uppercase, lowercase, number, symbol
 - Bcrypt with 12 salt rounds
-- Force change after initial setup
+- No forced password change after setup
 
 ### Session Management
 - 64-byte random hex token
 - HttpOnly, Secure, SameSite=Strict cookie
-- 24-hour expiry (configurable)
+- 24-hour expiry
 - Stored in SQLite (revocable)
 
 ### Account Lockout
@@ -198,18 +210,19 @@ src/
 - Track by IP + username combination
 - Audit log for all attempts
 
-### 2FA (TOTP) - MANDATORY
+### 2FA (TOTP) - OPTIONAL
 - 32-character base32 secret
 - 30-second time step
 - 6-digit code
 - 10 recovery codes (single-use, bcrypt hashed)
 - QR code for authenticator apps (Google Authenticator, Authy)
-- **Users cannot access the system until 2FA is enabled**
+- **2FA is recommended but not required to access the system**
 
-### Password Reset (No Email)
+### Password Reset (Requires 2FA)
 - Requires valid 2FA code (TOTP or Recovery Code)
 - Recovery code is consumed after use
 - User must have 2FA enabled to reset password
+- Without 2FA, password reset is NOT possible
 - Alternative: Contact system administrator
 
 ---
@@ -305,12 +318,12 @@ src/
 - [ ] Create /settings/security page
 
 ### Phase 7: Middleware & Integration
-- [ ] Update src/middleware.ts (session validation + 2FA check)
-- [ ] Add setup redirect (no users → /setup)
-- [ ] Add login redirect (no session → /login)
-- [ ] Add 2FA warning redirect (no 2FA → show warning)
-- [ ] Maintain MC_API_TOKEN backward compatibility
-- [ ] Update .env.example
+- [x] Update src/middleware.ts (session validation from user_sessions table)
+- [x] Add setup redirect (no users → /setup)
+- [x] Add login redirect (no session → /login)
+- [x] Add 2FA warning redirect (no 2FA → show warning)
+- [x] Removed MC_API_TOKEN - now using session tokens from database
+- [x] Update .env.example
 
 ### Phase 8: Testing & Documentation
 - [ ] Unit tests for password hashing
@@ -321,40 +334,30 @@ src/
 
 ---
 
-## Initial Setup Flow
+## Initial Setup Flow (Current Implementation)
 
 ```
 1. App starts → Check if any users exist
-2. If no users → Console displays:
-   ╔══════════════════════════════════════════╗
-   ║  MISSION CONTROL - FIRST RUN SETUP       ║
-   ╠══════════════════════════════════════════╣
-   ║  No admin account found.                  ║
-   ║                                           ║
-   ║  Visit: http://localhost:4000/setup       ║
-   ║                                           ║
-   ║  A random password will be generated.     ║
-   ║  You MUST change it after first login.    ║
-   ╚══════════════════════════════════════════╝
+2. If no users → Redirect to /setup page
+3. Setup page shows:
+   - Email input field
+   - Password input field (user chooses their own)
+   - Confirm password field
+   - Info banner explaining 2FA will be required
 
-3. User visits /setup → Enters email
-4. System generates random password → Displays in console + UI
-5. Console shows:
-   ╔══════════════════════════════════════════╗
-   ║  ADMIN ACCOUNT CREATED                   ║
-   ╠══════════════════════════════════════════╣
-   ║  Email: admin@example.com                ║
-   ║  Password: Xk9#mP2$vL8@nQ4!             ║
-   ║                                           ║
-   ║  ⚠️  SAVE THIS PASSWORD NOW!              ║
-   ║  ⚠️  You must change it after login.      ║
-   ╚══════════════════════════════════════════╝
-
-6. User logs in → Forced to change password
-7. After password change → Redirected to 2FA setup (MANDATORY)
-8. User MUST complete 2FA setup before accessing dashboard
-9. Show warning banner until 2FA is enabled
+4. User enters email and chooses password
+5. User submits form → Account created
+6. User is automatically logged in (session created)
+7. Redirect to dashboard
+8. 2FA setup is recommended but not mandatory
 ```
+
+### Key Differences from Original Spec
+- **No random password** — User provides their own password
+- **No console logging** — Password is not displayed in console
+- **No forced password change** — User's password is immediately valid
+- **Immediate login** — Session created on setup, no separate login required
+- **2FA recommended, not mandatory** — User can access dashboard without 2FA
 
 ---
 
@@ -384,12 +387,38 @@ Alternative: Contact system administrator
 
 ---
 
+## API Authentication (Current Implementation)
+
+### How It Works
+- **Session tokens from database** — API authentication uses tokens stored in `user_sessions` table
+- **Token rotation** — New session token generated on each login
+- **24-hour expiry** — Tokens automatically expire after 24 hours
+- **No static tokens** — No environment variables needed for API auth
+
+### Internal API Calls
+- Server-side code uses `getAuthHeaders()` from `@/lib/auth/api-token`
+- Fetches any valid session token from database
+- Includes in `Authorization: Bearer <token>` header
+
+### Middleware Validation
+- Incoming Bearer tokens validated against `user_sessions` table
+- `getSessionByToken()` checks token exists and is not expired
+- Same-origin browser requests allowed without token check
+
+### Token Lifecycle
+```
+User logs in → Session created → Token stored in DB
+Internal calls → Fetch token from DB → Use in API calls
+User logs out → Session deleted → Token invalidated
+24 hours pass → Token expires → Must re-login
+```
+
 ## Backward Compatibility
 
-- Keep `MC_API_TOKEN` support for API access (external integrations)
-- Browser UI uses session-based auth
-- External API calls can use either token or session
-- Gradual migration path for existing deployments
+- Session-based authentication is the primary auth method
+- Browser UI uses session-based auth (cookies)
+- External API calls use session tokens from user_sessions table
+- Session tokens rotate on each login and expire after 24 hours
 
 ---
 

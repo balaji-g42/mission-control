@@ -50,10 +50,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Re-dispatch
     const missionControlUrl = getMissionControlUrl();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (process.env.MC_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
-    }
+    const { getAuthHeaders } = await import('@/lib/auth/api-token');
+    const headers = await getAuthHeaders();
 
     const res = await fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {
       method: 'POST',
