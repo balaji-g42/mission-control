@@ -158,6 +158,14 @@ export function useSSE() {
               }
               break;
 
+            case 'health_score_updated':
+              debug.sse('Health score updated', sseEvent.payload);
+              // Dispatch custom event for health score listeners
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('health-score-updated', { detail: sseEvent.payload }));
+              }
+              break;
+
             case 'cost_cap_warning':
               debug.sse('Cost cap warning', sseEvent.payload);
               showToast({

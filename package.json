@@ -1,6 +1,6 @@
 {
   "name": "mission-control",
-  "version": "2.2.1",
+  "version": "2.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo -p ${PORT:-4000}",
@@ -25,6 +25,7 @@
     "clsx": "^2.1.1",
     "css-tree": "^3.1.0",
     "date-fns": "^4.1.0",
+    "echarts": "^6.0.0",
     "lucide-react": "^0.468.0",
     "next": "14.2.21",
     "node-pty": "^1.1.0",

@@ -1354,6 +1354,247 @@ const migrations: Migration[] = [
 
       console.log('[Migration 021] Parallel build isolation tables and columns created');
     }
+  },
+  {
+    id: '022',
+    name: 'add_product_health_scores',
+    up: (db) => {
+      console.log('[Migration 022] Adding product health scores table and weight config...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS product_health_scores (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          overall_score REAL NOT NULL DEFAULT 0,
+          research_freshness_score REAL DEFAULT 0,
+          pipeline_depth_score REAL DEFAULT 0,
+          swipe_velocity_score REAL DEFAULT 0,
+          build_success_score REAL DEFAULT 0,
+          cost_efficiency_score REAL DEFAULT 0,
+          component_data TEXT,
+          snapshot_date TEXT,
+          calculated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_health_scores_product ON product_health_scores(product_id, calculated_at DESC)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_health_scores_snapshot ON product_health_scores(product_id, snapshot_date)`);
+
+      const productsInfo = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
+      if (!productsInfo.some(col => col.name === 'health_weight_config')) {
+        db.exec(`ALTER TABLE products ADD COLUMN health_weight_config TEXT`);
+        console.log('[Migration 022] Added health_weight_config to products');
+      }
+
+      console.log('[Migration 022] Product health scores table and indexes created');
+    }
+  },
+  {
+    id: '023',
+    name: 'add_idea_similarity_detection',
+    up: (db) => {
+      console.log('[Migration 023] Adding idea similarity detection tables and columns...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS idea_embeddings (
+          id TEXT PRIMARY KEY,
+          idea_id TEXT NOT NULL UNIQUE REFERENCES ideas(id) ON DELETE CASCADE,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          embedding TEXT NOT NULL,
+          text_hash TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_idea_embeddings_product ON idea_embeddings(product_id)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_idea_embeddings_idea ON idea_embeddings(idea_id)`);
+
+      const ideasInfo = db.prepare("PRAGMA table_info(ideas)").all() as { name: string }[];
+      if (!ideasInfo.some(col => col.name === 'similarity_flag')) {
+        db.exec(`ALTER TABLE ideas ADD COLUMN similarity_flag TEXT`);
+      }
+      if (!ideasInfo.some(col => col.name === 'auto_suppressed')) {
+        db.exec(`ALTER TABLE ideas ADD COLUMN auto_suppressed INTEGER DEFAULT 0`);
+      }
+      if (!ideasInfo.some(col => col.name === 'suppress_reason')) {
+        db.exec(`ALTER TABLE ideas ADD COLUMN suppress_reason TEXT`);
+      }
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS idea_suppressions (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          suppressed_title TEXT NOT NULL,
+          suppressed_description TEXT NOT NULL,
+          similar_to_idea_id TEXT NOT NULL REFERENCES ideas(id),
+          similarity_score REAL NOT NULL,
+          reason TEXT NOT NULL,
+          ideation_cycle_id TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_idea_suppressions_product ON idea_suppressions(product_id, created_at DESC)`);
+
+      console.log('[Migration 023] Idea similarity detection tables and columns created');
+    }
+  },
+  {
+    id: '024',
+    name: 'add_user_task_reads',
+    up: (db) => {
+      console.log('[Migration 024] Adding user_task_reads table for unread tracking...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_task_reads (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL DEFAULT 'operator',
+          task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+          last_read_at TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(user_id, task_id)
+        )
+      `);
+
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_user_task_reads_user_task ON user_task_reads(user_id, task_id)`);
+
+      console.log('[Migration 024] user_task_reads table created');
+    }
+  },
+  {
+    id: '025',
+    name: 'add_batch_review_threshold',
+    up: (db) => {
+      console.log('[Migration 025] Adding batch_review_threshold column to products...');
+
+      const productsInfo = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
+      if (!productsInfo.some(col => col.name === 'batch_review_threshold')) {
+        db.exec(`ALTER TABLE products ADD COLUMN batch_review_threshold INTEGER DEFAULT 10`);
+        console.log('[Migration 025] Added batch_review_threshold to products');
+      }
+    }
+  },
+  {
+    id: '026',
+    name: 'add_rollback_history',
+    up: (db) => {
+      console.log('[Migration 026] Adding rollback history table...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS rollback_history (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          task_id TEXT REFERENCES tasks(id),
+          trigger_type TEXT NOT NULL CHECK (trigger_type IN ('health_check', 'ci_failure', 'manual')),
+          trigger_details TEXT NOT NULL,
+          merged_pr_url TEXT NOT NULL,
+          merged_commit_sha TEXT NOT NULL,
+          revert_pr_url TEXT,
+          revert_pr_status TEXT NOT NULL DEFAULT 'pending' CHECK (revert_pr_status IN ('pending', 'created', 'merged', 'failed')),
+          previous_automation_tier TEXT,
+          acknowledged INTEGER NOT NULL DEFAULT 0,
+          acknowledged_at TEXT,
+          acknowledged_by TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+
+      db.exec('CREATE INDEX IF NOT EXISTS idx_rollback_history_product ON rollback_history(product_id)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_rollback_history_unack ON rollback_history(acknowledged, product_id)');
+
+      console.log('[Migration 026] Rollback history table created');
+    }
+  },
+  {
+    id: '027',
+    name: 'add_product_program_ab_testing',
+    up: (db) => {
+      console.log('[Migration 027] Adding Product Program A/B testing tables and columns...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS product_program_variants (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          content TEXT NOT NULL,
+          is_control INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_ppv_product ON product_program_variants(product_id)`);
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS product_ab_tests (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          variant_a_id TEXT NOT NULL REFERENCES product_program_variants(id),
+          variant_b_id TEXT NOT NULL REFERENCES product_program_variants(id),
+          status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'concluded', 'cancelled')),
+          split_mode TEXT NOT NULL DEFAULT 'concurrent' CHECK (split_mode IN ('concurrent', 'alternating')),
+          min_swipes INTEGER NOT NULL DEFAULT 50,
+          last_variant_used TEXT,
+          winner_variant_id TEXT REFERENCES product_program_variants(id),
+          created_at TEXT DEFAULT (datetime('now')),
+          concluded_at TEXT
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_ab_tests_product ON product_ab_tests(product_id, status)`);
+
+      const ideasInfo = db.prepare("PRAGMA table_info(ideas)").all() as { name: string }[];
+      if (!ideasInfo.some(col => col.name === 'variant_id')) {
+        db.exec(`ALTER TABLE ideas ADD COLUMN variant_id TEXT REFERENCES product_program_variants(id)`);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_ideas_variant ON ideas(variant_id)`);
+        console.log('[Migration 027] Added variant_id to ideas');
+      }
+
+      console.log('[Migration 027] Product Program A/B testing tables created');
+    }
+  },
+  {
+    id: '028',
+    name: 'add_product_skills',
+    up: (db) => {
+      console.log('[Migration 028] Adding product_skills table...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS product_skills (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          skill_type TEXT NOT NULL CHECK (skill_type IN ('build', 'deploy', 'test', 'fix', 'config', 'pattern')),
+          title TEXT NOT NULL,
+          trigger_keywords TEXT,
+          prerequisites TEXT,
+          steps TEXT NOT NULL,
+          verification TEXT,
+          confidence REAL DEFAULT 0.5,
+          times_used INTEGER DEFAULT 0,
+          times_succeeded INTEGER DEFAULT 0,
+          last_used_at TEXT,
+          created_by_task_id TEXT REFERENCES tasks(id),
+          created_by_agent_id TEXT REFERENCES agents(id),
+          supersedes_skill_id TEXT REFERENCES product_skills(id),
+          status TEXT DEFAULT 'draft' CHECK (status IN ('active', 'deprecated', 'draft')),
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_product_skills_product ON product_skills(product_id, skill_type, status)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_product_skills_confidence ON product_skills(confidence DESC)`);
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS skill_reports (
+          id TEXT PRIMARY KEY,
+          skill_id TEXT NOT NULL REFERENCES product_skills(id) ON DELETE CASCADE,
+          task_id TEXT NOT NULL REFERENCES tasks(id),
+          used INTEGER NOT NULL DEFAULT 1,
+          succeeded INTEGER NOT NULL DEFAULT 0,
+          deviation TEXT,
+          suggested_update TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_skill_reports_skill ON skill_reports(skill_id)`);
+
+      console.log('[Migration 028] product_skills and skill_reports tables created');
+    }
   }
 ];
 

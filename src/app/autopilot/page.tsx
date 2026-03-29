@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Plus, Rocket, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { HealthBadge } from '@/components/autopilot/HealthBadge';
 import type { Product } from '@/lib/types';
 
 export default function AutopilotPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
+  const [healthScores, setHealthScores] = useState<Record<string, number>>({});
 
   useEffect(() => {
     (async () => {
@@ -30,6 +32,15 @@ export default function AutopilotPage() {
             } catch { /* skip */ }
           }));
           setPendingCounts(counts);
+
+          // Fetch health scores
+          try {
+            const healthRes = await fetch('/api/products/health-scores');
+            if (healthRes.ok) {
+              const scores = await healthRes.json();
+              setHealthScores(scores);
+            }
+          } catch { /* skip */ }
         }
       } catch (error) {
         console.error('Failed to load products:', error);
@@ -37,6 +48,16 @@ export default function AutopilotPage() {
         setLoading(false);
       }
     })();
+  }, []);
+
+  // Listen for SSE health score updates
+  useEffect(() => {
+    function handleHealthUpdate(e: Event) {
+      const { productId, score } = (e as CustomEvent).detail;
+      setHealthScores(prev => ({ ...prev, [productId]: score }));
+    }
+    window.addEventListener('health-score-updated', handleHealthUpdate);
+    return () => window.removeEventListener('health-score-updated', handleHealthUpdate);
   }, []);
 
   if (loading) {
@@ -121,7 +142,18 @@ export default function AutopilotPage() {
                       </span>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-mc-text-secondary group-hover:text-mc-accent transition-colors" />
+                  <div className="flex items-center gap-2">
+                    {healthScores[product.id] !== undefined && (
+                      <Link
+                        href={`/autopilot/${product.id}/health`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hover:scale-110 transition-transform"
+                      >
+                        <HealthBadge score={healthScores[product.id]} size={38} />
+                      </Link>
+                    )}
+                    <ArrowRight className="w-4 h-4 text-mc-text-secondary group-hover:text-mc-accent transition-colors" />
+                  </div>
                 </div>
                 {product.description && (
                   <p className="text-sm text-mc-text-secondary line-clamp-2">{product.description}</p>

@@ -445,6 +445,15 @@ export async function PATCH(
       }
     }
 
+    // Extract skills from completed task (non-blocking, async)
+    if (nextStatus === 'done' && existing.product_id) {
+      import('@/lib/skill-extraction').then(({ extractSkillsFromTask }) =>
+        extractSkillsFromTask(id).catch(err =>
+          console.error('[Skills] extraction failed:', err)
+        )
+      );
+    }
+
     // Drain the review queue when a task reaches 'done' (frees the verification slot)
     if (nextStatus === 'done') {
       drainQueue(id, existing.workspace_id).catch(err =>
@@ -516,8 +525,9 @@ export async function DELETE(
     run('DELETE FROM work_checkpoints WHERE task_id = ?', [id]);
     run('DELETE FROM openclaw_sessions WHERE task_id = ?', [id]);
     run('DELETE FROM events WHERE task_id = ?', [id]);
-    // Conversations reference tasks - nullify or delete
+    // Conversations and Knowledge reference tasks - nullify or delete
     run('UPDATE conversations SET task_id = NULL WHERE task_id = ?', [id]);
+    run('UPDATE knowledge_entries SET task_id = NULL WHERE task_id = ?', [id]);
 
     // Now delete the task (cascades to task_activities and task_deliverables)
     run('DELETE FROM tasks WHERE id = ?', [id]);

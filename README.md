@@ -28,7 +28,7 @@ I highly recommend getting Hetzner VPS to run this. <a href="https://hetzner.clo
   <a href="https://missioncontrol.ghray.com"><strong>🎮 Live Demo</strong></a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-docker">Docker</a> •
-  <a href="#-whats-new-in-v221">What's New</a> •
+  <a href="#-whats-new-in-v240">What's New</a> •
   <a href="#-features">Features</a> •
   <a href="#-how-it-works">How It Works</a> •
   <a href="#-configuration">Configuration</a> •
@@ -41,36 +41,66 @@ I highly recommend getting Hetzner VPS to run this. <a href="https://hetzner.clo
 
 ---
 
-## 🚀 What's New in v2.2.1
+## 🚀 What's New in v2.4.0
 
-### Health Check & Monitoring
-- **`/api/health`** — Unauthenticated summary or authenticated full-detail JSON. Checks DB, gateway, agents, queue, research, and cost caps.
-- **`/api/health/metrics`** — Prometheus scrape target for Grafana/monitoring dashboards.
-
-### Database Backup API
-- **On-demand backups** — Create, list, restore, and optionally upload to S3 via `/api/admin/backups`. Management UI in Settings.
+### Agent Skill Creation Loop
+- **Agents learn reusable procedures** — When a task completes, the system extracts structured skills (build steps, deploy scripts, config patterns) from what the agent did. Skills are stored as executable playbooks with commands, prerequisites, and verification.
+- **Skills improve with use** — Agents report whether a skill worked. Bayesian confidence scoring promotes proven skills and deprecates unreliable ones. No manual curation needed.
+- **Injected at dispatch** — Matched skills are the first thing an agent sees, not a footnote. Agent #1 figures out the build process, Agent #2 gets it as primary instructions.
 
 ### Previous Releases
 
 <details>
+<summary>v2.3.x — Idea Dedup, Chat, Undo, A/B Testing, Rollback</summary>
+
+- Idea similarity detection & auto-deduplication
+- Floating operator chat widget with @mentions
+- 10-second swipe undo + batch review mode
+- Product program A/B testing
+- Automated rollback pipeline via GitHub webhooks
+</details>
+
+### Idea Similarity Detection
+- **Auto-deduplication** — New ideas are compared against existing ones. Ideas >90% similar to rejected ideas are auto-suppressed. Similar ideas get a warning badge. Full audit trail.
+
+### Operator Chat Widget
+- **Chat from anywhere** — Floating chat widget with threaded conversations per task. `@agent` mentions, command palette (`/status`, `/nudge`, `/checkpoint`), and unread badges.
+
+### Swipe Undo & Batch Review
+- **10-second undo** — Full rollback of any swipe including task deletion. Batch review mode for table-view multi-select actions.
+
+### Product Program A/B Testing
+- **Test your product program** — Run concurrent or alternating A/B tests on product program variants. Research and ideation run against each variant. Statistical comparison of approval rates.
+
+### Automated Rollback Pipeline
+- **Auto-revert failed deploys** — GitHub webhook monitors merged PRs. Post-merge health checks. Auto-creates revert PRs when failures detected.
+
+### Activity Dashboard Picker
+- **Workspace selector** — `/activity` lists all workspaces instead of hardcoding to one.
+
+### Previous Releases
+
+<details>
+<summary>v2.2.1 — Health Check & Backup API</summary>
+
+- `/api/health` and `/api/health/metrics` for monitoring integration
+- Database backup API with optional S3 upload
+</details>
+
+<details>
 <summary>v2.2.0 — Preference Learning & Token Tracking</summary>
 
-- **Your swipes train the system** — Every approve/reject/maybe builds a per-product preference model that steers future research and ideation.
-- **Token counts now recorded** — Research and ideation cycles pass usage data through to the activity log and cost tracker.
+- Swipe-driven preference learning (Karpathy AutoResearch pattern)
+- Token counts now recorded in activity log and cost tracker
 </details>
 
 <details>
-<summary>v2.1.1 — Ideation Category Validation</summary>
+<summary>v2.1.x — Server-Side Pipeline, Error Reporting & Badges</summary>
 
-- LLM-generated idea categories validated against schema before insert, preventing CHECK constraint failures.
-</details>
-
-<details>
-<summary>v2.1.0 — Server-Side Pipeline, Error Reporting & Badges</summary>
-
-- Research → ideation pipeline runs server-side (fire-and-forget, survives navigation)
-- LLM retry with exponential backoff on timeout/network errors
-- Toast notification system with real-time SSE error surfacing
+- Server-side research → ideation pipeline (fire-and-forget)
+- LLM retry with exponential backoff
+- Toast notifications with one-click error reporting
+- Pending ideas badges on product cards
 - One-click error reporting via mailto (pre-filled with system logs)
 - Pending ideas badge on product cards (iPhone-style notification count)
 </details>

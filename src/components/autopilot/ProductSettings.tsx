@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Save, Loader, ExternalLink } from 'lucide-react';
-import type { Product, BuildMode } from '@/lib/types';
+import { HealthWeightSliders } from './HealthWeightSliders';
+import type { Product, BuildMode, HealthWeightConfig } from '@/lib/types';
 
 interface Props {
   product: Product;
@@ -20,6 +21,7 @@ export function ProductSettings({ product, onSave }: Props) {
     icon: product.icon || '📦',
     cost_cap_per_task: product.cost_cap_per_task ?? '',
     cost_cap_monthly: product.cost_cap_monthly ?? '',
+    batch_review_threshold: product.batch_review_threshold ?? 10,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -34,7 +36,8 @@ export function ProductSettings({ product, onSave }: Props) {
     form.build_mode !== (product.build_mode || 'plan_first') ||
     form.icon !== (product.icon || '📦') ||
     String(form.cost_cap_per_task) !== String(product.cost_cap_per_task ?? '') ||
-    String(form.cost_cap_monthly) !== String(product.cost_cap_monthly ?? '');
+    String(form.cost_cap_monthly) !== String(product.cost_cap_monthly ?? '') ||
+    form.batch_review_threshold !== (product.batch_review_threshold ?? 10);
 
   async function handleSave() {
     setSaving(true);
@@ -54,6 +57,7 @@ export function ProductSettings({ product, onSave }: Props) {
       else body.cost_cap_per_task = null;
       if (form.cost_cap_monthly !== '') body.cost_cap_monthly = Number(form.cost_cap_monthly);
       else body.cost_cap_monthly = null;
+      body.batch_review_threshold = Number(form.batch_review_threshold) || 10;
 
       const res = await fetch(`/api/products/${product.id}`, {
         method: 'PATCH',
@@ -222,7 +226,7 @@ export function ProductSettings({ product, onSave }: Props) {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <label className={labelClass}>Cost Cap / Task ($)</label>
             <input
@@ -247,7 +251,30 @@ export function ProductSettings({ product, onSave }: Props) {
               step={1}
             />
           </div>
+          <div>
+            <label className={labelClass}>Batch Review Threshold</label>
+            <input
+              type="number"
+              value={form.batch_review_threshold}
+              onChange={e => setForm(f => ({ ...f, batch_review_threshold: Number(e.target.value) || 10 }))}
+              className={inputClass}
+              placeholder="10"
+              min={1}
+              max={100}
+              step={1}
+            />
+          </div>
         </div>
+      </div>
+
+      {/* Health Score Weights */}
+      <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
+        <HealthWeightSliders
+          productId={product.id}
+          initialWeights={product.health_weight_config ? (() => {
+            try { return JSON.parse(product.health_weight_config); } catch { return undefined; }
+          })() : undefined}
+        />
       </div>
 
       {/* Danger Zone */}
