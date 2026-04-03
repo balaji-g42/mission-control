@@ -3,7 +3,7 @@
  * Uses /v1/chat/completions for stateless prompt→response (no agent sessions).
  */
 
-const GATEWAY_URL = process.env.MC_OPENCLAW_GATEWAY_URL?.replace('ws://', 'http://').replace('wss://', 'https://') || 'http://127.0.0.1:18789';
+const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL?.replace('ws://', 'http://').replace('wss://', 'https://') || 'http://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
 const DEFAULT_MODEL = process.env.AUTOPILOT_MODEL || 'anthropic/claude-sonnet-4-6';
 const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes

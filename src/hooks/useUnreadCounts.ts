@@ -53,6 +53,10 @@ export function useUnreadCounts(): Record<string, number> {
 
   useEffect(() => {
     fetchCounts();
+    pollRef.current = setInterval(fetchCounts, 5000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [fetchCounts]);
 
   return counts;

@@ -123,6 +123,6 @@
 - **Tech stack:** Next.js 14, React 18, TypeScript 5, SQLite (better-sqlite3), Zustand, Tailwind CSS
 - **Agent orchestration:** OpenClaw gateway via WebSocket (sessions, chat.send RPC)
 - **Config:** `getMissionControlUrl()` from `@/lib/config`
-- **Auth:** Session-based authentication (tokens stored in `user_sessions` table, rotate on login)
+- **Auth:** `MC_API_TOKEN` in `.env.local`
 - **PM2:** Process `mission-control`, port 4000
 - **Plan reference:** `~/.claude/plans/effervescent-finding-mochi.md`

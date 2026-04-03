@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   Settings, Save, RotateCcw, Home, FolderOpen, Link as LinkIcon,
   HardDrive, Download, Upload, Trash2, RotateCw, ChevronDown, ChevronRight,
@@ -263,26 +262,6 @@ export default function SettingsPage() {
               {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="border-b border-mc-border bg-mc-bg-secondary">
-        <div className="max-w-4xl mx-auto px-6 py-3">
-          <nav className="flex items-center gap-6">
-            <Link
-              href="/settings"
-              className="text-mc-accent font-medium border-b-2 border-mc-accent pb-1"
-            >
-              General
-            </Link>
-            <Link
-              href="/settings/security"
-              className="text-mc-text-secondary hover:text-mc-text pb-1 border-b-2 border-transparent hover:border-mc-text-secondary transition-colors"
-            >
-              Security
-            </Link>
-          </nav>
         </div>
       </div>
 
@@ -698,7 +677,7 @@ export default function SettingsPage() {
             <li><code>MISSION_CONTROL_URL</code> - API URL override</li>
             <li><code>WORKSPACE_BASE_PATH</code> - Base workspace directory</li>
             <li><code>PROJECTS_PATH</code> - Projects directory</li>
-            <li><code>MC_OPENCLAW_GATEWAY_URL</code> - Gateway WebSocket URL</li>
+            <li><code>OPENCLAW_GATEWAY_URL</code> - Gateway WebSocket URL</li>
             <li><code>OPENCLAW_GATEWAY_TOKEN</code> - Gateway auth token</li>
             <li><code>S3_ENDPOINT</code>, <code>S3_BUCKET</code>, <code>S3_ACCESS_KEY</code>, <code>S3_SECRET_KEY</code> - S3 backup storage</li>
           </ul>

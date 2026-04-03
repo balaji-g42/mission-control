@@ -41,6 +41,10 @@ export function ChatWidget() {
 
   useEffect(() => {
     fetchUnread();
+    pollRef.current = setInterval(fetchUnread, 3000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [fetchUnread]);
 
   // Keyboard shortcuts

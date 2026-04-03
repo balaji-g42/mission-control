@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll } from '@/lib/db';
-import { anyUsersExist, getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +18,6 @@ interface UnreadCount {
 // GET /api/tasks/unread — Get unread message counts for all tasks with chat activity
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSessionFromRequest(request);
-    if (!session) {
-      return NextResponse.json([], { status: 200 });
-    }
-
     const userId = 'operator';
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');

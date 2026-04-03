@@ -1,6 +1,5 @@
 import { queryAll, queryOne, run, transaction } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
-import { anyUsersExist } from '@/lib/auth';
 
 interface GatewayAgent {
   id?: string;
@@ -25,13 +24,6 @@ function normalizeRole(name: string): string {
 }
 
 export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; reason?: string }): Promise<number> {
-  // Skip sync if no users exist (setup not completed yet)
-  const usersExist = await anyUsersExist();
-  if (!usersExist) {
-    console.log('[AgentCatalog] Skipping sync - no users exist (setup not completed)');
-    return 0;
-  }
-
   const force = Boolean(options?.force);
   const now = Date.now();
   if (!force && now - lastSyncAt < SYNC_INTERVAL_MS) {

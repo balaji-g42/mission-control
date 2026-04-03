@@ -1,43 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { createHmac } from 'node:crypto';
+import { createHmac } from 'crypto';
 import { queryOne, queryAll, run } from '@/lib/db';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
 /**
  * Verify HMAC-SHA256 signature of webhook request
- * Uses session tokens from database instead of static WEBHOOK_SECRET env var
  */
-function verifyWebhookSignature(signature: string | null, rawBody: string): boolean {
+function verifyWebhookSignature(signature: string, rawBody: string): boolean {
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  
+  if (!webhookSecret) {
+    // Dev mode - skip validation
+    return true;
+  }
+
   if (!signature) {
     return false;
   }
 
-  // Get all valid session tokens from database (not expired)
-  const sessions = queryAll<{ token: string }>(
-    `SELECT token FROM user_sessions WHERE expires_at > datetime('now') ORDER BY created_at DESC`
-  );
+  const expectedSignature = createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
 
-  if (!sessions || sessions.length === 0) {
-    // No valid sessions - skip validation in dev mode
-    console.warn('[Webhook] No valid session tokens found — skipping signature validation');
-    return true;
-  }
-
-  // Check if signature matches any valid session token
-  for (const session of sessions) {
-    const expectedSignature = createHmac('sha256', session.token)
-      .update(rawBody)
-      .digest('hex');
-
-    if (signature === expectedSignature) {
-      return true;
-    }
-  }
-
-  return false;
+  return signature === expectedSignature;
 }
 
 /**
@@ -61,14 +48,18 @@ export async function POST(request: NextRequest) {
     // Read raw body for signature verification
     const rawBody = await request.text();
     
-    // Verify webhook signature using session tokens
-    const signature = request.headers.get('x-webhook-signature');
-    if (!verifyWebhookSignature(signature, rawBody)) {
-      console.warn('[WEBHOOK] Invalid signature attempt');
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Verify webhook signature if WEBHOOK_SECRET is set
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const signature = request.headers.get('x-webhook-signature');
+      
+      if (!signature || !verifyWebhookSignature(signature, rawBody)) {
+        console.warn('[WEBHOOK] Invalid signature attempt');
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
     }
 
     const body = JSON.parse(rawBody);

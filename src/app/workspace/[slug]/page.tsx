@@ -26,8 +26,6 @@ export default function WorkspacePage() {
   const [notFound, setNotFound] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('queue');
   const [isPortrait, setIsPortrait] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
 
   useSSE();
 
@@ -46,40 +44,6 @@ export default function WorkspacePage() {
   }, []);
 
   useEffect(() => {
-    async function checkAuth() {
-      try {
-        const authRes = await fetch('/api/auth/me');
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          const user = authData.user;
-          
-          // Check if user must change password (legacy check - should not happen with new setup)
-          if (user.mustChangePassword) {
-            window.location.href = '/settings/security?forcePasswordChange=true';
-            return;
-          }
-          
-          setAuthenticated(true);
-        } else {
-          // Not authenticated, redirect to login
-          window.location.href = '/login';
-          return;
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        window.location.href = '/login';
-        return;
-      } finally {
-        setAuthChecked(true);
-      }
-    }
-
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!authChecked || !authenticated) return;
-
     async function loadWorkspace() {
       try {
         const res = await fetch(`/api/workspaces/${slug}`);
@@ -100,7 +64,7 @@ export default function WorkspacePage() {
     }
 
     loadWorkspace();
-  }, [slug, setIsLoading, authChecked, authenticated]);
+  }, [slug, setIsLoading]);
 
   useEffect(() => {
     if (!isPortrait && mobileTab === 'queue') {
@@ -210,17 +174,6 @@ export default function WorkspacePage() {
       clearInterval(taskPoll);
     };
   }, [workspace, setAgents, setTasks, setEvents, setIsOnline, setIsLoading]);
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4 animate-pulse">🦞</div>
-          <p className="text-mc-text-secondary">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (notFound) {
     return (

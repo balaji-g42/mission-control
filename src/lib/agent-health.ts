@@ -157,8 +157,10 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
     console.log(`[Health] Orphaned assigned task detected: "${task.title}" (${task.id}) — stale for >${ASSIGNED_STALE_MINUTES}min, auto-dispatching`);
     
     const missionControlUrl = getMissionControlUrl();
-    const { getAuthHeaders } = await import('@/lib/auth/api-token');
-    const headers = await getAuthHeaders();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (process.env.MC_API_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+    }
 
     try {
       const res = await fetch(`${missionControlUrl}/api/tasks/${task.id}/dispatch`, {
@@ -247,8 +249,10 @@ export async function nudgeAgent(agentId: string): Promise<{ success: boolean; e
 
   // Re-dispatch via API
   const missionControlUrl = getMissionControlUrl();
-  const { getAuthHeaders } = await import('@/lib/auth/api-token');
-  const headers = await getAuthHeaders();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (process.env.MC_API_TOKEN) {
+    headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+  }
 
   try {
     const res = await fetch(`${missionControlUrl}/api/tasks/${activeTask.id}/dispatch`, {

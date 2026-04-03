@@ -1,10 +1,10 @@
 // Device Identity Management for OpenClaw Gateway Pairing
 // Generates and persists Ed25519 device identity for secure pairing with OpenClaw gateway
 
-import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 interface DeviceIdentity {
   deviceId: string;

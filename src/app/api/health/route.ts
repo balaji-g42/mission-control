@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getHealthSummary, getHealthDetail } from '@/lib/health';
-import { getSessionByToken } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,11 +7,11 @@ export const dynamic = 'force-dynamic';
  * GET /api/health
  *
  * Unauthenticated: returns summary {status, uptime_seconds, version}
- * Authenticated (Bearer session token) or same-origin: returns full detail payload.
+ * Authenticated (Bearer MC_API_TOKEN) or same-origin: returns full detail payload.
  */
 export async function GET(request: NextRequest) {
   try {
-    const isAuthed = await isAuthenticated(request);
+    const isAuthed = isAuthenticated(request);
 
     if (isAuthed) {
       const detail = getHealthDetail();
@@ -30,10 +29,22 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Check if the request carries a valid session token or originates from the same host.
- * Session tokens are validated against user_sessions table in the database.
+ * Check if the request carries a valid Bearer token or originates from the same host.
+ * This mirrors the middleware logic but is evaluated inline since /api/health
+ * bypasses the global auth middleware.
  */
-async function isAuthenticated(request: NextRequest): Promise<boolean> {
+function isAuthenticated(request: NextRequest): boolean {
+  const token = process.env.MC_API_TOKEN;
+
+  // If no token is configured, treat all requests as authenticated (dev mode)
+  if (!token) return true;
+
+  // Check Bearer header
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ') && authHeader.substring(7) === token) {
+    return true;
+  }
+
   // Check same-origin (browser UI hitting its own API)
   const host = request.headers.get('host');
   if (host) {
@@ -49,14 +60,6 @@ async function isAuthenticated(request: NextRequest): Promise<boolean> {
         if (new URL(referer).host === host) return true;
       } catch { /* invalid referer */ }
     }
-  }
-
-  // Check Bearer header against session tokens
-  const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const session = await getSessionByToken(token);
-    return !!session;
   }
 
   return false;
