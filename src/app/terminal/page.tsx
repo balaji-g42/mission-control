@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Terminal as TerminalIcon, ExternalLink } from 'lucide-react';
 
+// Force dynamic rendering since this page fetches runtime configuration
+export const dynamic = 'force-dynamic';
+
 export default function TerminalPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -17,7 +20,7 @@ export default function TerminalPage() {
         if (res.ok) {
           const config = await res.json();
           if (config.enabled && config.port) {
-            setTtydUrl(`http://localhost:${config.port}`);
+            setTtydUrl(`${window.location.protocol}//${window.location.hostname}:${config.port}`);
           }
         }
       } catch (error) {
