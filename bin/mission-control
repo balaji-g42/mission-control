@@ -29,7 +29,7 @@ if (fs.existsSync(envPath)) {
 // Default values
 const port = process.env.PORT || 4000;
 const dbPath = process.env.DATABASE_PATH || './mission-control.db';
-const ttydPort = process.env.NEXT_PUBLIC_TTYD_PORT || '3001';
+const ttydPort = process.env.NEXT_PUBLIC_TTYD_PORT || process.env.TTYD_PORT || '3001';
 
 // Set defaults if not configured
 if (!process.env.DATABASE_PATH) process.env.DATABASE_PATH = dbPath;
